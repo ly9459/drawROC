@@ -1,0 +1,22 @@
+<!DOCTYPE html>   
+<html>  
+   <head>
+      <meta charset="utf-8">
+      <title>Upload File</title>     
+      <h1>model test</h1> 
+   </head>   
+   <body> 
+      <h3>file ext must be .txt </h3>
+      <h3>file format must be [true_label] [predict_label] [predict_result] [predicr_score], like this: 3  3  1  0.910428 </h3> 
+      <form method=post enctype=multipart/form-data>         
+         <input type=file name=file>          
+         <input type=submit value=uploads>     
+      </form> 
+      {% if has_result %}
+      <img src="{{result[0]}}">
+      <img src="{{result[1]}}">
+      <p>MAP is : {{result[2]}}</p>
+      {% endif %}
+      
+   </body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="Caffe classification">
+
+        <title>Image Classification</title>
+
+        <link href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+        <script type="text/javascript" src="//code.jquery.com/jquery-2.1.1.js"></script>
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+        <!-- Resize image before upload. -->
+        <script type="text/javascript">
+            function base64ToBlob(base64, mime){
+                mime = mime || '';
+                var sliceSize = 256;
+                var byteChars = window.atob(base64);
+                var byteArrays = [];
+
+                for(var offset = 0, len = byteChars.length; offset < len; offset += sliceSize){
+                    var slice = byteChars.slice(offset, offset + sliceSize);
+
+                    var byteNumbers = new Array(slice.length);
+                    for(var i = 0; i < slice.length; i++){
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    var byteArray = new Uint8Array(byteNumbers);
+                    byteArrays.push(byteArray);
+                }
+                return new Blob(byteArrays, {type: mime});
+            }
+
+            function readURL(input){
+                if(input.files && input.files[0]){
+                    var reader = new FileReader();
+                    reader.onload = function(e){
+                        var img=document.createElement('img');
+                        var canvas=document.createElement("canvas");
+                        var ctx=canvas.getContext("2d");
+                        img.src=e.target.result;
+                        img.onload = function(){
+                            ctx.clearRect(0,0,256,256);
+                            ctx.drawImage(img,0,0,img.width,img.height,0,0,256,256);
+                            document.getElementById("blah").src = canvas.toDataURL();
+                            var image = e.target.result;
+                            image = canvas.toDataURL();
+                            image = $('#blah').attr('src');
+                            var base64ImageContent = image.replace(/^data:image\/(png|jpeg|jpg);base64,/,"");
+                            var blob = base64ToBlob(base64ImageContent, 'image/jpeg');
+                            var formData = new FormData();
+                            formData.append('picture', blob);
+                            $.ajax({
+                                url: '/upload',
+                                type: "POST",
+                                cache: false,
+                                contentType: false,
+                                processData: false,
+                                data: formData,
+                                success: function(result){
+                                    console.log(result);
+                                    //$("html").html(result);
+                                }
+                            });
+                        };
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                }
+            }
+        </script>
+    </head>
+
+    <body>
+        <div class="container">
+            <div class="page-header">
+                <h1>Image Classification</h1>
+            </div>
+
+            {% if has_result %}
+            {% if not result[0] %}
+            <!-- error in the result -->
+            <div class="alert alert-danger">{{ result[1] }} Did you provide a valid image file?</div>
+            {% else %}
+            <div class="media">
+                <a class="pull-left" href="#"><img class="media-object" width="192" height="192" src={{ imagesrc }}></a>
+                <div class="media-body">
+                    <div class="bs-example bs-example-tabs">
+                        <ul id="infoTab" class="nav nav-tabs">
+                            <li class="active"><a href="#infopred" data-toggle="tab">Maximally accurate</a></li>
+                            <li><a href="#flatpred" data-toggle="tab">Maximally specific</a></li>
+                        </ul>
+                        <div id="infoTabContent" class="tab-content">
+                            <div class="tab-pane fade in active" id="infopred">
+                                <ul class="list-group">
+                                    {% for single_pred in result[2] %}
+                                    <li class="list-group-item">
+                                    <span class="badge">{{ single_pred[1] }}</span>
+                                    <h4 class="list-group-item-heading">{{ single_pred[0] }}</h4>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="tab-pane fade" id="flatpred">
+                                <ul class="list-group">
+                                    {% for single_pred in result[1] %}
+                                    <li class="list-group-item">
+                                    <span class="badge">{{ single_pred[1] }}</span>
+                                    <h4 class="list-group-item-heading">{{ single_pred[0] }}</h4>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p> Done in {{ result[3] }} seconds.</p>
+            {% endif %}
+            <hr>
+            {% endif %}
+
+            <label for="imagefile">Upload your image:</label>
+            <input type="file" name="imagefile" id="imagefile" onchange="readURL(this);" />
+            <img id="blah" src="#" alt="your image" style="display: none;" />
+        </div>
+
+        <hr>
+        <div id="footer">
+            <div class="container">
+                <p>&copy; Ling 2017</p>
+            </div>
+        </div>
+    </body>
+</html>

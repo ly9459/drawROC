@@ -1,0 +1,238 @@
+import sklearn
+import numpy as np
+import matplotlib.pyplot as plt
+import sklearn.metrics.pairwise as pw
+
+
+def draw_roc_curve(fpr,tpr,title='cosine',save_name='roc'):
+    print "draw ROC"
+    plt.figure()
+    plt.plot(fpr, tpr)
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic using: '+title)
+    plt.legend(loc="lower right")
+    print "draw ROC 2"
+    #plt.show()
+    plt.savefig('static/'+save_name+'.png')
+
+def draw_roc_curve2(fpr,tpr,thresholds, title='cosine',save_name='roc2'):
+    print "draw ROC revolution"
+    plt.figure()
+    plt.plot(thresholds, 1.0-tpr, 'r--', thresholds, fpr, 'b--')
+    #plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.6, 1.1])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('thresh value')
+    plt.ylabel('False Positive Rate(R)/True Negative Rate(B)')
+    plt.title(title)
+    plt.legend(loc="lower right")
+    #plt.show()
+    plt.savefig('static/'+save_name+'.png')
+    
+def draw_hist(data, error_classes, save_name='error_hist'):
+    print "draw error hist"
+    plt.figure()    
+    plt.bar(error_classes, data, align="center")
+    #plt.xlim([-1, 10])
+    plt.ylim([0.0, 1.0])
+    #plt.show()
+    plt.savefig('static/'+'error_hist.png')
+
+def draw_PR_curve(precision, recall):
+    print "draw PR"
+    #plt.figure()
+    plt.plot(recall, precision,'ro')
+    #plt.plot([0, 1], [0, 1], 'ro')
+    plt.xlim([0.9, 1.0])
+    plt.ylim([0.5, 1.0])
+    plt.xlabel('recall')
+    plt.ylabel('precision')
+    plt.title('PR')
+    plt.legend(loc="lower right")
+    #plt.show()
+    #plt.savefig(save_name+'.png')
+
+def read_label(labelfile, col_idx):
+    #print "read data in file"
+    fin=open(labelfile)
+    lines=fin.readlines()
+    datas=np.empty((len(lines),),dtype=np.int)
+    k=0;
+    for line in lines:
+        datas[k]=int(line.split()[col_idx])
+        k=k+1;
+    fin.close()
+    return datas
+
+def read_predict(labelfile, col_idx):
+    #print "read data in file"
+    fin=open(labelfile)
+    lines=fin.readlines()
+    datas=np.empty((len(lines),))
+    k=0;
+    for line in lines:
+        datas[k]=float(line.split()[col_idx])
+        k=k+1;
+    fin.close()
+    return datas
+
+def find_best_thresh(tpr, fpr, thresholds):  
+    mindis = 1.0
+    idx = -1
+    for i in range(len(tpr)):
+       #print i;
+       dis = abs(1.0-tpr[i]-fpr[i])
+       if dis < mindis:
+          mindis = dis
+          idx=i;
+    if idx>=0:
+       return thresholds[idx]
+    else:
+       return -1
+
+def cal_performance_data(true_labels, predict_labels, labels, predicts, thresh, num_classes, savename):
+    tp = 0;
+    fp = 0;
+    tn = 0;
+    fn = 0;
+    tp_list = [-1]
+    fp_list = [-1]
+    tn_list = [-1]
+    fn_list = [-1]
+    for i in range(len(labels)):
+      if predicts[i] < thresh :
+        if labels[i] == 1:
+          fp = fp+1
+          fp_list.append(i)
+        else:
+          fn = fn+1
+          fn_list.append(i)
+      else:
+        if labels[i] == 1:
+          tp = tp+1
+          tp_list.append(i)
+        else:
+          tn = tn+1
+          tn_list.append(i)
+    del tp_list[0]
+    del fp_list[0]
+    del tn_list[0]
+    del fn_list[0]
+    
+    print "fales positive cnt is " + str(len(fp_list))
+    print "true negative cnt is " + str(len(tn_list))
+    error_cnt = len(fp_list)+len(tn_list)
+    error_hist = [0]
+    error_classes = [0]
+    for i in range(num_classes):
+      error_hist.append(0)
+      error_classes.append(i)
+    del error_hist[0]
+    del error_classes[0]
+
+    for i in range(len(fp_list)):
+      idx = fp_list[i]
+      idx = true_labels[idx]
+      #print idx
+      error_hist[idx] = error_hist[idx]+1
+    for i in range(len(tn_list)):
+      idx = tn_list[i]
+      error_hist[true_labels[idx]] = error_hist[true_labels[idx]]+1
+    for i in range(10):
+      #print error_hist[i]
+      error_hist[i] = error_hist[i]*1.0/error_cnt
+      #print error_hist[i]
+    draw_hist(error_hist, error_classes, savename)
+
+def getKey(x):
+    return float(x[1])
+
+def get_precision_and_recall(labels, predicts_score, idx_labels):
+    lenOfRange = len(idx_labels)
+
+    precision=np.empty((lenOfRange,))
+    recall = np.empty((lenOfRange,))
+    AP = 0.0
+    list_score = []
+    positive_cnt = 0
+    for i in range(lenOfRange):
+      idx = idx_labels[i]
+      info = [labels[idx], predicts_score[idx]]  
+      list_score.append(info)
+      if labels[idx] == 1:
+        positive_cnt = positive_cnt+1
+    list_score.sort(key=getKey, reverse=True)
+
+    k = 1
+    #print AP
+    pos_cnt_loop = 0; 
+    for i in list_score: 
+      if i[0] == 1:
+        pos_cnt_loop = pos_cnt_loop+1
+      precision[k-1] = pos_cnt_loop*1.0/k
+      recall[k-1] = pos_cnt_loop*1.0/positive_cnt
+      if(k > 1):
+        apt=precision[k-1] *(recall[k-1]-recall[k-2])
+      else:
+        apt=precision[k-1] *recall[k-1]
+      AP = AP+apt
+      k=k+1
+    #draw_PR_curve(precision, recall)
+    #print AP
+    return AP
+
+#def cal_ap():
+
+def cal_map(true_labels, predict_labels, labels, predicts_score, best_thresh, num_labels):
+    
+    MAP = 0.0
+    idx_label = []
+    for i in range(num_labels):
+      idx_label.append([])
+    for i in range(len(true_labels)):
+      idx = true_labels[i]
+      idx_label[idx].append(i)
+    for i in range(num_labels):
+      MAP = MAP + get_precision_and_recall(labels, predicts_score, idx_label[i])
+    MAP = MAP/num_labels
+    print MAP
+    return MAP
+
+def find_label_num(true_labels):
+    label_num = 0
+    for i in range(len(true_labels)):
+       if true_labels[i] > label_num:
+          label_num = true_labels[i]
+
+    return label_num+1
+
+
+#if __name__ == '__main__':
+def process_test(filename, savename):
+    #read in data
+    filelist_label = filename
+    num_labels = 0
+    true_labels=read_label(filelist_label, 0)
+    num_labels = find_label_num(true_labels)
+    predict_labels=read_label(filelist_label, 1)
+    labels=read_label(filelist_label, 2)
+    predicts_score=read_predict(filelist_label, 3)
+    print 'num_labels =' + str(num_labels)
+    # cal fpr and tpr
+    fpr, tpr, thresholds=sklearn.metrics.roc_curve(labels,predicts_score)
+    # draw roc1
+    draw_roc_curve(fpr,tpr,'cosine', savename+'_roc')
+    # draw roc2
+    draw_roc_curve2(fpr,tpr, thresholds, 'cosine', savename+'_roc2')
+    # get best score
+    best_thresh = find_best_thresh(fpr,tpr, thresholds)
+    print "best score is " + str(best_thresh)
+    cal_performance_data(true_labels, predict_labels, labels, predicts_score, best_thresh, num_labels, savename+'_error_hist')
+    # analysis
+    MAP = cal_map(true_labels, predict_labels, labels, predicts_score, best_thresh, num_labels)
+    return MAP
+
